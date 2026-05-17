@@ -127,3 +127,23 @@ CREATE TABLE timesheets (
 INSERT INTO users (username, password_hash, role) 
 VALUES ('johndoe', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'Employee');
 ```
+
+
+1. 💼 HR Admin Credentials (HR Console Access)
+Use these credentials to view the headcount, live attendance rates, manage payrolls, and review/process leave applications:
+
+Username: hr1
+Password: password
+(Note: hr2 and hr3 are also active, all using the password 'password')
+2. 🚀 Project Manager Credentials (PM Console Access)
+Use these credentials to monitor active projects, check timesheet log hours, and track sprint task backlogs:
+
+Username: pm1
+Password: password
+(Note: pm2 through pm10 are also active, all using the password 'password')
+3. 🔒 Standard Employee Credentials (Employee Portal Access)
+To verify the portal's security and role restrictions:
+
+Username: johndoe
+Password: password
+Expected Behavior: If you attempt to log in using johndoe on the Admin Portal, the authentication service will securely reject the attempt with an access-denied bubble, ensuring standard employees cannot access admin consoles!

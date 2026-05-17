@@ -2,18 +2,27 @@ import requests
 from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
 from ....core.config import settings
-
-# Initialize Pinecone client
-pc = Pinecone(api_key=settings.PINECONE_API_KEY)
-index = pc.Index(settings.PINECONE_INDEX_NAME)
-
-# Initialize embedding model
-embedder = SentenceTransformer('all-MiniLM-L6-v2')
-
 from typing import List, Optional
 
+# Safe/Lazy initialization for network/heavy assets
+pc = None
+index = None
+embedder = None
+
+try:
+    pc = Pinecone(api_key=settings.PINECONE_API_KEY)
+    index = pc.Index(settings.PINECONE_INDEX_NAME)
+    print("Pinecone client and index initialized successfully.")
+except Exception as e:
+    print(f"Warning: Pinecone initialization failed (server may be offline or API unreachable): {e}")
+
+try:
+    embedder = SentenceTransformer('all-MiniLM-L6-v2')
+    print("SentenceTransformer loaded successfully.")
+except Exception as e:
+    print(f"Warning: SentenceTransformer model failed to load: {e}")
+
 def query_rag_chatbot(user_message: str, history: Optional[List[dict]] = None) -> str:
- 
     """Query the RAG chatbot using Pinecone and Ollama.
 
     Args:
@@ -21,25 +30,31 @@ def query_rag_chatbot(user_message: str, history: Optional[List[dict]] = None) -
     Returns:
         The chatbot's answer as a string.
     """
-    # 1. Embed the user query
-    query_embedding = embedder.encode(user_message).tolist()
-
-
-    # 2. Search Pinecone vector DB
-    search_results = index.query(
-        vector=query_embedding,
-        top_k=3,
-        include_metadata=True
-    )
-
-
-    # 3. Build context from Pinecone matches
+    # 1. Embed the user query if assets are available
     context_text = ""
-    if search_results and "matches" in search_results:
-        for match in search_results["matches"]:
-            if "metadata" in match and "text" in match["metadata"]:
-                context_text += match["metadata"]["text"] + "\n"
+    
+    if embedder is not None and index is not None:
+        try:
+            query_embedding = embedder.encode(user_message).tolist()
 
+            # 2. Search Pinecone vector DB
+            search_results = index.query(
+                vector=query_embedding,
+                top_k=3,
+                include_metadata=True
+            )
+
+            # 3. Build context from Pinecone matches
+            if search_results and "matches" in search_results:
+                for match in search_results["matches"]:
+                    if "metadata" in match and "text" in match["metadata"]:
+                        context_text += match["metadata"]["text"] + "\n"
+        except Exception as e:
+            print(f"Warning: Pinecone search query failed: {e}")
+            context_text = "No vector database context available."
+    else:
+        print("Warning: Pinecone client not initialized. Skipping RAG search.")
+        context_text = "No vector database context available."
 
     # 4. Prepare messages for Ollama
     messages = [
@@ -76,10 +91,11 @@ def query_rag_chatbot(user_message: str, history: Optional[List[dict]] = None) -
     }
 
     try:
-        response = requests.post(settings.OLLAMA_URL, json=payload)
+        response = requests.post(settings.OLLAMA_URL, json=payload, timeout=5)
         response.raise_for_status()
         result = response.json()
         return result.get("message", {}).get("content", "Sorry, I could not generate a response.")
     except Exception as e:
         print(f"Error querying Ollama: {e}")
-        return "I am currently unavailable. Please try again later."
+        return "The HR chatbot is currently undergoing offline maintenance. Please try again later, or contact HR directly!"
+
