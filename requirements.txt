@@ -1,0 +1,9 @@
+fastapi==0.110.0
+uvicorn==0.29.0
+mysql-connector-python==8.3.0
+PyJWT==2.8.0
+pydantic==2.6.4
+pydantic-settings==2.2.1
+sentence-transformers==2.5.1
+pinecone==5.0.0
+requests==2.31.0
